@@ -1,0 +1,401 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>P&L Analyzer</title>
+    <!-- Tailwind CSS CDN -->
+    <script src="https://cdn.tailwindcss.com"></script>
+    <!-- Chart.js CDN for graphical interpretation -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        /* Custom styles for Inter font and general body styling */
+        body {
+            font-family: 'Inter', sans-serif;
+            background-color: #f0f4f8; /* Light blue-gray background */
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 100vh;
+            padding: 1rem;
+        }
+        /* Custom scrollbar for better aesthetics */
+        ::-webkit-scrollbar {
+            width: 8px;
+        }
+        ::-webkit-scrollbar-track {
+            background: #e0e0e0;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb {
+            background: #888;
+            border-radius: 10px;
+        }
+        ::-webkit-scrollbar-thumb:hover {
+            background: #555;
+        }
+        /* Ensure canvas is responsive */
+        #marginsChart {
+            max-width: 100%;
+            height: auto; /* Maintain aspect ratio */
+        }
+    </style>
+</head>
+<body class="selection:bg-blue-300 selection:text-blue-900">
+    <div class="max-w-4xl w-full bg-white p-8 rounded-xl shadow-2xl border border-blue-200">
+        <h1 class="text-4xl font-extrabold text-gray-900 text-center mb-8">P&L Statement Analyzer</h1>
+        <p class="text-lg text-gray-700 text-center mb-8">
+            Enter your P&L data points below to quickly calculate key profitability margins, get detailed insights, and visualize your financial health.
+        </p>
+
+        <!-- Input Form -->
+        <form id="pnlForm" class="grid grid-cols-1 md:grid-cols-2 gap-6 mb-8">
+            <div>
+                <label for="revenue" class="block text-sm font-medium text-gray-700 mb-1">Revenue (Sales)</label>
+                <input type="number" id="revenue" placeholder="e.g., 100000" required min="0" step="0.01"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out">
+            </div>
+            <div>
+                <label for="cogs" class="block text-sm font-medium text-gray-700 mb-1">Cost of Goods Sold (COGS)</label>
+                <input type="number" id="cogs" placeholder="e.g., 40000" required min="0" step="0.01"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out">
+            </div>
+            <div>
+                <label for="operatingExpenses" class="block text-sm font-medium text-gray-700 mb-1">Operating Expenses</label>
+                <input type="number" id="operatingExpenses" placeholder="e.g., 30000" required min="0" step="0.01"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out">
+            </div>
+            <div>
+                <label for="interestExpense" class="block text-sm font-medium text-gray-700 mb-1">Interest Expense</label>
+                <input type="number" id="interestExpense" placeholder="e.g., 2000" required min="0" step="0.01"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out">
+            </div>
+            <div>
+                <label for="taxes" class="block text-sm font-medium text-gray-700 mb-1">Taxes</label>
+                <input type="number" id="taxes" placeholder="e.g., 5000" required min="0" step="0.01"
+                       class="mt-1 block w-full px-4 py-2 border border-gray-300 rounded-md shadow-sm focus:ring-blue-500 focus:border-blue-500 sm:text-sm transition duration-150 ease-in-out">
+            </div>
+
+            <div class="md:col-span-2 flex flex-col sm:flex-row justify-center gap-4 mt-4">
+                <button type="submit"
+                        class="inline-flex items-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 transition duration-150 ease-in-out transform hover:scale-105">
+                    Analyze P&L
+                </button>
+                <button type="button" id="resetButton"
+                        class="inline-flex items-center px-6 py-3 border border-gray-300 text-base font-medium rounded-md shadow-sm text-gray-700 bg-white hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 transition duration-150 ease-in-out transform hover:scale-105">
+                    Reset Form
+                </button>
+            </div>
+        </form>
+
+        <!-- Analysis Results Section -->
+        <div id="results" class="hidden mt-10 p-6 bg-green-50 rounded-lg border border-green-200 shadow-md">
+            <h2 class="text-2xl font-bold text-green-800 mb-4 text-center">Analysis Results</h2>
+
+            <div class="grid grid-cols-1 sm:grid-cols-2 gap-4 mb-6">
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Gross Profit:</h3>
+                    <p id="grossProfit" class="text-xl font-bold text-blue-600"></p>
+                </div>
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Gross Profit Margin:</h3>
+                    <p id="grossProfitMargin" class="text-xl font-bold text-blue-600"></p>
+                </div>
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Operating Income (EBIT):</h3>
+                    <p id="operatingIncome" class="text-xl font-bold text-blue-600"></p>
+                </div>
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Operating Profit Margin:</h3>
+                    <p id="operatingProfitMargin" class="text-xl font-bold text-blue-600"></p>
+                </div>
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Net Income:</h3>
+                    <p id="netIncome" class="text-xl font-bold text-blue-600"></p>
+                </div>
+                <div class="bg-white p-4 rounded-md shadow-sm border border-gray-100">
+                    <h3 class="text-lg font-semibold text-gray-800">Net Profit Margin:</h3>
+                    <p id="netProfitMargin" class="text-xl font-bold text-blue-600"></p>
+                </div>
+            </div>
+
+            <h3 class="text-xl font-bold text-gray-800 mb-3">Interpretation:</h3>
+            <ul class="list-disc list-inside text-gray-700 space-y-2">
+                <li><strong class="text-green-700">Gross Profit Margin:</strong> This metric shows the percentage of revenue left after deducting the direct costs associated with producing your goods or services (Cost of Goods Sold). A higher Gross Profit Margin indicates efficient production and pricing strategies, meaning you're effectively covering your direct costs.</li>
+                <li><strong class="text-green-700">Operating Profit Margin:</strong> This percentage reveals the profitability of your core business operations before accounting for interest and taxes. It's a key indicator of how efficiently your business is managed and controlled in terms of operational expenses (like salaries, rent, marketing, etc.). A strong operating margin suggests healthy core business performance.</li>
+                <li><strong class="text-green-700">Net Profit Margin:</strong> This is your "bottom line" profit percentage. It represents the portion of revenue that remains after *all* expenses, including COGS, operating expenses, interest, and taxes, have been deducted. A robust Net Profit Margin signifies strong overall financial health and effective cost management across the entire business.</li>
+            </ul>
+
+            <div id="detailedAnalysis" class="mt-6 p-4 bg-blue-50 rounded-lg border border-blue-200">
+                <h3 class="text-xl font-bold text-blue-800 mb-3">Analysis & Insights:</h3>
+                <p id="grossMarginAnalysis" class="mb-2 text-gray-700"></p>
+                <p id="operatingMarginAnalysis" class="mb-2 text-gray-700"></p>
+                <p id="netMarginAnalysis" class="mb-2 text-gray-700"></p>
+                <p class="text-sm text-blue-600 mt-4 italic">
+                    These insights are based on general industry benchmarks. Actual "good" or "bad" margins can vary significantly depending on your specific industry, business model, and growth stage. Always compare your figures to industry averages for a more accurate assessment.
+                </p>
+            </div>
+
+            <!-- Chart Section -->
+            <div class="mt-8 p-4 bg-white rounded-lg shadow-md border border-gray-200">
+                <h3 class="text-xl font-bold text-gray-800 mb-4 text-center">Profitability Margins Overview</h3>
+                <canvas id="marginsChart"></canvas>
+            </div>
+
+            <p class="text-sm text-gray-600 mt-4 italic">
+                Note: This tool provides a simplified analysis. For detailed financial insights, consult with a financial professional.
+            </p>
+        </div>
+
+        <!-- Message Box for alerts -->
+        <div id="messageBox" class="fixed inset-0 bg-gray-600 bg-opacity-50 flex items-center justify-center hidden z-50">
+            <div class="bg-white p-6 rounded-lg shadow-xl max-w-sm w-full text-center">
+                <p id="messageText" class="text-lg font-medium text-gray-800 mb-4"></p>
+                <button id="messageBoxClose" class="px-4 py-2 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition duration-150 ease-in-out">OK</button>
+            </div>
+        </div>
+    </div>
+
+    <script>
+        // Get DOM elements
+        const pnlForm = document.getElementById('pnlForm');
+        const resultsDiv = document.getElementById('results');
+        const resetButton = document.getElementById('resetButton');
+
+        // Output elements
+        const grossProfitElem = document.getElementById('grossProfit');
+        const grossProfitMarginElem = document.getElementById('grossProfitMargin');
+        const operatingIncomeElem = document.getElementById('operatingIncome');
+        const operatingProfitMarginElem = document.getElementById('operatingProfitMargin');
+        const netIncomeElem = document.getElementById('netIncome');
+        const netProfitMarginElem = document.getElementById('netProfitMargin');
+
+        // Analysis elements
+        const grossMarginAnalysisElem = document.getElementById('grossMarginAnalysis');
+        const operatingMarginAnalysisElem = document.getElementById('operatingMarginAnalysis');
+        const netMarginAnalysisElem = document.getElementById('netMarginAnalysis');
+
+        const messageBox = document.getElementById('messageBox');
+        const messageText = document.getElementById('messageText');
+        const messageBoxClose = document.getElementById('messageBoxClose');
+
+        // Chart.js instance
+        let marginsChart; // Declare chart variable globally
+
+        /**
+         * Displays a custom message box instead of alert().
+         * @param {string} message - The message to display.
+         */
+        function showMessageBox(message) {
+            messageText.textContent = message;
+            messageBox.classList.remove('hidden');
+        }
+
+        // Close message box event listener
+        messageBoxClose.addEventListener('click', () => {
+            messageBox.classList.add('hidden');
+        });
+
+        /**
+         * Formats a number as currency.
+         * @param {number} value - The number to format.
+         * @returns {string} The formatted currency string.
+         */
+        function formatCurrency(value) {
+            return new Intl.NumberFormat('en-IN', { // Changed locale to en-IN for Indian Rupees
+                style: 'currency',
+                currency: 'INR', // Changed currency code to INR
+                minimumFractionDigits: 2,
+                maximumFractionDigits: 2
+            }).format(value);
+        }
+
+        /**
+         * Formats a number as a percentage.
+         * @param {number} value - The number (0-100) to format.
+         * @returns {string} The formatted percentage string.
+         */
+        function formatPercentage(value) {
+            return value.toFixed(2) + '%';
+        }
+
+        /**
+         * Provides qualitative analysis for profit margins.
+         * @param {number} margin - The profit margin percentage.
+         * @param {string} type - The type of margin (e.g., "Gross", "Operating", "Net").
+         * @returns {string} The analysis text.
+         */
+        function getMarginAnalysis(margin, type) {
+            let analysis = `Your ${type} Profit Margin of ${formatPercentage(margin)} indicates: `;
+            if (type === "Gross") {
+                if (margin >= 50) {
+                    analysis += `<span class="text-green-700 font-semibold">Excellent!</span> This suggests very strong control over your direct costs of goods sold and effective pricing.`;
+                } else if (margin >= 20) {
+                    analysis += `<span class="text-yellow-700 font-semibold">Good.</span> Your direct costs are reasonably managed, but continuous review of pricing and COGS can further enhance profitability.`;
+                } else {
+                    analysis += `<span class="text-red-700 font-semibold">Needs attention.</span> Your direct costs are high relative to your revenue. This could point to issues with pricing, supplier costs, or production efficiency. Consider reviewing these areas.`;
+                }
+            } else if (type === "Operating") {
+                if (margin >= 15) {
+                    analysis += `<span class="text-green-700 font-semibold">Strong operational efficiency.</span> Your core business is highly profitable before financial and tax considerations, indicating effective management of day-to-day expenses.`;
+                } else if (margin >= 5) {
+                    analysis += `<span class="text-yellow-700 font-semibold">Solid.</span> Your operational expenses are well-managed, but there's potential for further optimization to boost your core profitability.`;
+                } else if (margin >= 0) {
+                    analysis += `<span class="text-red-700 font-semibold">Tight.</span> Your operational expenses are consuming a significant portion of your gross profit. This suggests a need to scrutinize overheads and operational efficiency.`;
+                } else {
+                    analysis += `<span class="text-red-700 font-semibold">Negative.</span> Your core operations are currently losing money. Immediate and comprehensive review of all operational expenses and revenue streams is crucial.`;
+                }
+            } else if (type === "Net") {
+                if (margin >= 10) {
+                    analysis += `<span class="text-green-700 font-semibold">Very healthy.</span> This indicates strong overall profitability after all expenses, including interest and taxes. You're retaining a good portion of your revenue as profit.`;
+                } else if (margin >= 3) {
+                    analysis += `<span class="text-yellow-700 font-semibold">Reasonable.</span> Your business is profitable, but the final profit margin is moderate. There might be opportunities across all expense categories to improve the bottom line further.`;
+                } else if (margin >= 0) {
+                    analysis += `<span class="text-red-700 font-semibold">Slim.</span> Your final profit margin is very low. Every expense, from COGS to taxes, needs scrutiny to increase profitability and ensure long-term sustainability.`;
+                } else {
+                    analysis += `<span class="text-red-700 font-semibold">Negative.</span> Your business is currently operating at a loss. A comprehensive review of all income and expenses is highly recommended to identify areas for cost reduction or revenue enhancement.`;
+                }
+            }
+            return analysis;
+        }
+
+        /**
+         * Initializes or updates the Chart.js graph.
+         * @param {number} grossMargin - Gross Profit Margin percentage.
+         * @param {number} operatingMargin - Operating Profit Margin percentage.
+         * @param {number} netMargin - Net Profit Margin percentage.
+         */
+        function updateChart(grossMargin, operatingMargin, netMargin) {
+            const ctx = document.getElementById('marginsChart').getContext('2d');
+
+            const data = {
+                labels: ['Gross Profit Margin', 'Operating Profit Margin', 'Net Profit Margin'],
+                datasets: [{
+                    label: 'Profit Margin (%)',
+                    data: [grossMargin, operatingMargin, netMargin],
+                    backgroundColor: [
+                        'rgba(75, 192, 192, 0.7)', // Greenish for Gross
+                        'rgba(54, 162, 235, 0.7)', // Bluish for Operating
+                        'rgba(153, 102, 255, 0.7)' // Purplish for Net
+                    ],
+                    borderColor: [
+                        'rgba(75, 192, 192, 1)',
+                        'rgba(54, 162, 235, 1)',
+                        'rgba(153, 102, 255, 1)'
+                    ],
+                    borderWidth: 1
+                }]
+            };
+
+            const options = {
+                responsive: true,
+                maintainAspectRatio: false, // Allow canvas to resize freely
+                scales: {
+                    y: {
+                        beginAtZero: true,
+                        title: {
+                            display: true,
+                            text: 'Margin (%)'
+                        }
+                    },
+                    x: {
+                        grid: {
+                            display: false // Hide vertical grid lines for cleaner look
+                        }
+                    }
+                },
+                plugins: {
+                    legend: {
+                        display: false // No need for legend as labels are clear
+                    },
+                    tooltip: {
+                        callbacks: {
+                            label: function(context) {
+                                return context.dataset.label + ': ' + context.parsed.y.toFixed(2) + '%';
+                            }
+                        }
+                    }
+                }
+            };
+
+            if (marginsChart) {
+                // If chart already exists, update its data
+                marginsChart.data = data;
+                marginsChart.options = options; // Update options in case they changed
+                marginsChart.update();
+            } else {
+                // If chart doesn't exist, create a new one
+                marginsChart = new Chart(ctx, {
+                    type: 'bar', // Bar chart type
+                    data: data,
+                    options: options
+                });
+            }
+        }
+
+        /**
+         * Handles form submission for P&L analysis.
+         * @param {Event} event - The form submission event.
+         */
+        pnlForm.addEventListener('submit', (event) => {
+            event.preventDefault(); // Prevent default form submission
+
+            // Get input values and parse them as floats
+            const revenue = parseFloat(document.getElementById('revenue').value);
+            const cogs = parseFloat(document.getElementById('cogs').value);
+            const operatingExpenses = parseFloat(document.getElementById('operatingExpenses').value);
+            const interestExpense = parseFloat(document.getElementById('interestExpense').value);
+            const taxes = parseFloat(document.getElementById('taxes').value);
+
+            // Basic validation
+            if (isNaN(revenue) || isNaN(cogs) || isNaN(operatingExpenses) || isNaN(interestExpense) || isNaN(taxes) ||
+                revenue < 0 || cogs < 0 || operatingExpenses < 0 || interestExpense < 0 || taxes < 0) {
+                showMessageBox('Please enter valid positive numbers for all financial fields.');
+                resultsDiv.classList.add('hidden'); // Hide results if input is invalid
+                return;
+            }
+
+            // Calculate P&L components
+            const grossProfit = revenue - cogs;
+            const operatingIncome = grossProfit - operatingExpenses;
+            const netIncome = operatingIncome - interestExpense - taxes;
+
+            // Calculate Profit Margins
+            const grossProfitMargin = revenue > 0 ? (grossProfit / revenue) * 100 : 0;
+            const operatingProfitMargin = revenue > 0 ? (operatingIncome / revenue) * 100 : 0;
+            const netProfitMargin = revenue > 0 ? (netIncome / revenue) * 100 : 0;
+
+            // Display results
+            grossProfitElem.textContent = formatCurrency(grossProfit);
+            grossProfitMarginElem.textContent = formatPercentage(grossProfitMargin);
+            operatingIncomeElem.textContent = formatCurrency(operatingIncome);
+            operatingProfitMarginElem.textContent = formatPercentage(operatingProfitMargin);
+            netIncomeElem.textContent = formatCurrency(netIncome);
+            netProfitMarginElem.textContent = formatPercentage(netProfitMargin);
+
+            // Display detailed analysis
+            grossMarginAnalysisElem.innerHTML = getMarginAnalysis(grossProfitMargin, "Gross");
+            operatingMarginAnalysisElem.innerHTML = getMarginAnalysis(operatingProfitMargin, "Operating");
+            netMarginAnalysisElem.innerHTML = getMarginAnalysis(netProfitMargin, "Net");
+
+            // Update the chart with new data
+            updateChart(grossProfitMargin, operatingProfitMargin, netProfitMargin);
+
+            resultsDiv.classList.remove('hidden'); // Show the results section
+        });
+
+        /**
+         * Handles resetting the form and hiding results.
+         */
+        resetButton.addEventListener('click', () => {
+            pnlForm.reset(); // Clear all form fields
+            resultsDiv.classList.add('hidden'); // Hide the results section
+            if (marginsChart) {
+                marginsChart.destroy(); // Destroy the chart when resetting
+                marginsChart = null; // Clear the chart instance
+            }
+            showMessageBox('Form has been reset.');
+        });
+    </script>
+</body>
+</html>
